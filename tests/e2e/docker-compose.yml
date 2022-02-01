@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+
+  mongodb:
+    image: mongo:4.4
+    networks:
+      - fipytests
+
+  orion:
+    image: fiware/orion-ld:0.8.0
+    entrypoint: orionld -fg -multiservice -ngsiv1Autocast -dbhost mongodb -logLevel DEBUG
+    networks:
+      - fipytests
+    ports:
+      - "1026:1026"
+    depends_on:
+      - mongodb
+
+  timescale:
+    image: timescale/timescaledb-postgis:1.7.5-pg12
+    ports:
+      - "5432:5432"
+    networks:
+      - fipytests
+    environment:
+      - POSTGRES_PASSWORD=*
+
+  quantumleap-db-setup:
+    image: orchestracities/quantumleap-pg-init
+    depends_on:
+      - timescale
+    networks:
+      - fipytests
+    environment:
+      - QL_DB_PASS=*
+      - QL_DB_INIT_DIR=/ql-db-init
+      - PG_HOST=timescale
+      - PG_PASS=*
+
+  quantumleap:
+    image: orchestracities/quantumleap
+    depends_on:
+      - timescale
+    networks:
+      - fipytests
+    ports:
+      - "8668:8668"
+    environment:
+      - QL_DEFAULT_DB=timescale
+      - POSTGRES_HOST=timescale
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB_NAME=quantumleap
+      - POSTGRES_DB_USER=quantumleap
+      - POSTGRES_DB_PASS=*
+      - POSTGRES_USE_SSL=False
+      - USE_GEOCODING=False
+      - CACHE_QUERIES=False
+      - LOGLEVEL=DEBUG
+
+networks:
+  fipytests:
+    driver: bridge
