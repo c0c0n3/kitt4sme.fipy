@@ -1,5 +1,5 @@
-from fipy import __version__
+from fipy import __version__, project_version
 
 
 def test_version():
-    assert __version__ == '0.1.0'
+    assert __version__ == project_version
