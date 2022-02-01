@@ -24,6 +24,3 @@ def pyproject_version(pyproject_pathname: Path) -> Optional[str]:
             if key == 'version':
                 return value
         return None
-
-
-project_version = pyproject_version(pyproject_file())
