@@ -1,3 +1,5 @@
+import pytest
+
 from fipy.dict import *
 
 
@@ -45,3 +47,25 @@ def test_add_to_dict_with_input_dict():
     assert d[kv1.key()] == kv1.value()
     assert d[kv2.key()] == kv2.value()
     assert d['y'] == 3
+
+
+def test_merge_dict_no_inputs():
+    d = merge_dicts()
+    assert d == {}
+
+
+def test_merge_dict_latter_keys_override_previous():
+    d1 = { 'x': 1, 'y': 2 }
+    d2 = { 'y': 3 }
+    r = merge_dicts(d1, d2)
+
+    assert r == { 'x': 1, 'y': 3 }
+
+
+@pytest.mark.parametrize('inputs, expected', [
+    ([{'x': 1}], {'x': 1}),
+    ([{'x': 1}, {'y': 1}, {'z': 1}], {'x': 1, 'y': 1, 'z': 1})
+])
+def test_merge_dict(inputs, expected):
+    r = merge_dicts(*inputs)
+    assert r == expected

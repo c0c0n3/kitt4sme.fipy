@@ -1,3 +1,4 @@
+from functools import reduce
 from typing import TypeVar, Generic, Union
 
 K = TypeVar('K')
@@ -77,3 +78,16 @@ def add_to_dict(*args: KeyValue, data: dict = None) -> dict:
     for kv in args:
         kv.add(data)
     return data
+
+
+def merge_dicts(*ds: dict) -> dict:
+    """Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+
+    Args:
+        ds: the dicts to merge.
+
+    Returns:
+        the merged dict or an empty dict if no arguments were given.
+    """
+    return reduce(lambda x,y: {**x, **y}, ds, {})
