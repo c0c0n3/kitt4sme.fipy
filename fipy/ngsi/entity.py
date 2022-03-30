@@ -1,5 +1,77 @@
 """
 Basic NGSI v2 data types.
+
+Examples
+--------
+
+>>> from fipy.ngsi.entity import *
+
+
+1. NGSI attributes from values.
+
+>>> FloatAttr.new(2.3).json()
+'{"type": "Number", "value": 2.3}'
+>>> print(TextAttr.new('howzit'))
+type='Text' value='howzit'
+
+
+2. NGSI entity from JSON---ignores unknown attributes.
+
+>>> BaseEntity.parse_raw('{"id": "1", "type": "foo", "x": 3}')
+BaseEntity(id='1', type='foo')
+
+
+3. Define your own entity.
+
+>>> class BotEntity(BaseEntity):
+...     type = 'Bot'
+...     speed: Optional[FloatAttr]
+
+
+4. Build entity with preformatted ID.
+
+>>> bot1 = BotEntity(id='').set_id_with_type_prefix('1')
+>>> bot1.id, bot1.type
+('urn:ngsi-ld:Bot:1', 'Bot')
+
+
+5. Don't serialise unset NGSI attributes.
+
+>>> bot1.to_json()
+'{"id": "urn:ngsi-ld:Bot:1", "type": "Bot"}'
+
+
+6. Build entity from dictionary.
+
+>>> raw_bot_data = {"id": ld_urn("Bot:2"), "speed": {"value": 12.3}}
+>>> bot2 = BotEntity(**raw_bot_data)
+>>> print(bot2)
+id='urn:ngsi-ld:Bot:2' type='Bot' speed=FloatAttr(type='Number', value=12.3)
+
+
+7. Serialise entity with attribute data to NGSI JSON.
+
+>>> bot2.to_json()
+'{"id": "urn:ngsi-ld:Bot:2", "type": "Bot", \
+    "speed": {"type": "Number", "value": 12.3}}'
+
+
+8. Filter non-Bot entities out of an NGSI update notification.
+
+>>> notification = EntityUpdateNotification(
+...     data=[
+...         {"id": "1", "type": "Bot", "speed": {"value": 1.1}},
+...         {"id": "2", "type": "NotMe", "speed": {"value": 2.2}},
+...         {"id": "3", "type": "Bot", "speed": {"value": 3.3}}
+...     ]
+... )
+>>> notification.filter_entities(BotEntity)
+[BotEntity(id='1', type='Bot', speed=FloatAttr(type='Number', value=1.1)), \
+ BotEntity(id='3', type='Bot', speed=FloatAttr(type='Number', value=3.3))]
+
+
+10. Have a look at the EntitySeries doc for examples of how to work
+with entity series.
 """
 
 from datetime import datetime
