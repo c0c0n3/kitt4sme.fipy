@@ -2,13 +2,14 @@
 Wrapper calls to QuantumLeap.
 """
 
+from datetime import datetime
 from requests import HTTPError
-from typing import List, Type
+from typing import List, Optional
 from uri import URI
 
 from fipy.http.jclient import JsonClient
 from fipy.ngsi.headers import FiwareContext
-from fipy.ngsi.entity import BaseEntity
+from fipy.ngsi.entity import BaseEntity, EntitySeries
 
 
 class QuantumLeapEndpoints:
@@ -38,6 +39,16 @@ class QuantumLeapEndpoints:
 
     def entities(self) -> str:
         url = self._append('v2/entities')
+        return str(url)
+
+    def entity_series(self, entity_id: str, entity_type: str,
+                      query: dict = {}) -> str:
+        rel_path = f"v2/entities/{entity_id}"
+        url = self._append(rel_path)
+
+        query['type'] = entity_type
+        url.query = query
+
         return str(url)
 
     def insert_op(self) -> str:
@@ -89,3 +100,48 @@ class QuantumLeapClient:
             return sample_size
         except HTTPError:  # probably no notifications received yet...
             return 0
+
+    def entity_series(self, entity_id: str, entity_type: str,
+                      entries_from_latest: Optional[int] = None,
+                      from_timepoint: Optional[datetime] = None,
+                      to_timepoint: Optional[datetime] = None) -> EntitySeries:
+        """Collect a sub-sequence of an entity series into data-frame like
+        object.
+
+        For each tracked entity, Quantum Leap keeps a time-indexed sequence of
+        changes to that entity. You can fetch it from Quantum Leap with a
+        ```
+            GET /v2/entities/{entity_id}?type={entity_type}
+        ```
+        which is what this method does. The returned content isn't data frame
+        friendly, so this method packs the returned data into an `EntitySeries`
+        you can directly use with e.g. Pandas as in
+        ```
+            r = ql_client.entity_series('Bot:1', 'Bot')
+            time_indexed_df = pd.DataFrame(r.dict()).set_index('index')
+        ```
+
+        Args:
+            entity_id: The ID of the entity to retrieve.
+            entity_type: The type of the entity to retrieve.
+            entries_from_latest: Optional number of series entries to retrieve
+                starting from the latest entry in the series. Defaults to None.
+            from_timepoint: Optional datetime to retrieve all entries from the
+                given timepoint. Defaults to None.
+            to_timepoint: Optional datetime to retrieve all entries up to the
+                given timepoint. Defaults to None.
+
+        Returns:
+            The query result packed in an `EntitySeries`.
+        """
+        query = {}
+        if entries_from_latest:
+            query['lastN'] = str(entries_from_latest)
+        if from_timepoint:
+            query['fromDate'] = from_timepoint.isoformat()
+        if to_timepoint:
+            query['toDate'] = to_timepoint.isoformat()
+
+        url = self._urls.entity_series(entity_id, entity_type, query)
+        raw_series = self._http.get(url=url, headers=self._ctx.headers())
+        return EntitySeries.from_quantumleap_format(raw_series)
