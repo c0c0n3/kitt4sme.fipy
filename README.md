@@ -64,5 +64,5 @@ Measure global test coverage and generate an HTML report
 
 ```console
 $ coverage run -m pytest -v tests
-$ coverage report html
+$ coverage html
 ```
