@@ -4,7 +4,7 @@ from typing import List, Optional
 from uri import URI
 
 
-from fipy.ngsi.entity import BaseEntity, FloatAttr
+from fipy.ngsi.entity import BaseEntity, FloatAttr, TextAttr
 from fipy.ngsi.headers import FiwareContext
 from fipy.ngsi.orion import OrionClient
 from fipy.ngsi.quantumleap import QuantumLeapClient
@@ -104,9 +104,12 @@ def wait_on_quantumleap():
     wait_for_quantumleap(quantumleap_client())
 
 
+DIRECTIONS = ['N', 'E', 'S', 'W']
+
 class BotEntity(BaseEntity):
     type = 'Bot'
     speed: Optional[FloatAttr]
+    direction: Optional[TextAttr]
 
 
 class BotSampler(DevicePoolSampler):
@@ -116,4 +119,7 @@ class BotSampler(DevicePoolSampler):
 
     def new_device_entity(self) -> BotEntity:
         seed = random.uniform(0, 1)
-        return BotEntity(id='', speed=FloatAttr.new(1.0335 + seed))
+        speed = FloatAttr.new(1.0335 + seed)
+        direction = TextAttr.new(random.choice(DIRECTIONS))
+
+        return BotEntity(id='', speed=speed, direction=direction)
