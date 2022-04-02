@@ -123,3 +123,38 @@ class BotSampler(DevicePoolSampler):
         direction = TextAttr.new(random.choice(DIRECTIONS))
 
         return BotEntity(id='', speed=speed, direction=direction)
+
+
+class DroneEntity(BaseEntity):
+    type = 'Drone'
+    height: FloatAttr
+
+
+class DroneSampler(DevicePoolSampler):
+
+    def __init__(self, pool_size: int, orion: Optional[OrionClient] = None):
+        super().__init__(pool_size, orion if orion else orion_client())
+
+    def new_device_entity(self) -> DroneEntity:
+        seed = random.uniform(0, 1)
+        height = FloatAttr.new(102.0335 + 10 * seed)
+
+        return DroneEntity(id='', height=height)
+
+
+
+class RoomEntity(BaseEntity):
+    type = 'Room'
+    temperature: FloatAttr
+
+
+class RoomSampler(DevicePoolSampler):
+
+    def __init__(self, pool_size: int, orion: Optional[OrionClient] = None):
+        super().__init__(pool_size, orion if orion else orion_client())
+
+    def new_device_entity(self) -> RoomEntity:
+        seed = random.uniform(0, 1)
+        temperature = FloatAttr.new(20.0335 * seed)
+
+        return RoomEntity(id='', temperature=temperature)

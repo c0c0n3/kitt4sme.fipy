@@ -1,6 +1,7 @@
 from fipy.ngsi.orion import OrionClient
+from fipy.ngsi.quantumleap import QuantumLeapClient
 from fipy.wait import wait_until
-from tests.util.fiware import BotSampler, QuantumLeapClient, SubMan
+from tests.util.fiware import BotSampler, SubMan
 
 
 BOT_N = 2
