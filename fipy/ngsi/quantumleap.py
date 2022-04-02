@@ -22,23 +22,22 @@ class QuantumLeapEndpoints:
         return self._base_url / abspath
 
     def attribute(self, entity_id: str, attr_name: str,
-                  query: dict = None) -> str:
+                  query: dict = {}) -> str:
         rel_path = f"v2/entities/{entity_id}/attrs/{attr_name}"
         url = self._append(rel_path)
-        if query:
-            url.query = query
+        url.query = query
         return str(url)
 
     def entity_type(self, etype: str, attr_name: str,
-                    query: dict = None) -> str:
+                    query: dict = {}) -> str:
         rel_path = f"v2/types/{etype}/attrs/{attr_name}"
         url = self._append(rel_path)
-        if query:
-            url.query = query
+        url.query = query
         return str(url)
 
-    def entities(self) -> str:
+    def entities(self, query: dict = {}) -> str:
         url = self._append('v2/entities')
+        url.query = query
         return str(url)
 
     def entity_series(self, entity_id: str, entity_type: str,
@@ -56,6 +55,20 @@ class QuantumLeapEndpoints:
         return str(url)
 
 
+def from_entity_summary(entity_summary: dict) -> Optional[BaseEntity]:
+    try:
+        eid = entity_summary['entityId']
+        etype = entity_summary['entityType']
+        return BaseEntity(id=eid, type=etype)
+    except KeyError:
+        return None
+
+
+def from_entity_summaries(xs: List[dict]) -> List[BaseEntity]:
+    ys = [from_entity_summary(x) for x in xs]
+    return [y for y in ys if y is not None]
+
+
 class QuantumLeapClient:
 
     def __init__(self, base_url: URI, ctx: FiwareContext):
@@ -63,10 +76,37 @@ class QuantumLeapClient:
         self._ctx = ctx
         self._http = JsonClient()
 
-    def list_entities(self) -> List[dict]:
+    @staticmethod
+    def _to_query_dict(entity_type: Optional[str] = None,
+                       entries_from_latest: Optional[int] = None,
+                       from_timepoint: Optional[datetime] = None,
+                       to_timepoint: Optional[datetime] = None) -> dict:
+        query = {}
+        if entity_type:
+            query['type'] = entity_type
+        if entries_from_latest:
+            query['lastN'] = str(entries_from_latest)
+        if from_timepoint:
+            query['fromDate'] = from_timepoint.isoformat()
+        if to_timepoint:
+            query['toDate'] = to_timepoint.isoformat()
+
+        return query
+
+    def list_entities(self,
+                      entity_type: Optional[str] = None,
+                      from_timepoint: Optional[datetime] = None,
+                      to_timepoint: Optional[datetime] = None) \
+                          -> List[BaseEntity]:
         try:
-            url = self._urls.entities()
-            return self._http.get(url=url, headers=self._ctx.headers())
+            query = self._to_query_dict(
+                entity_type=entity_type, from_timepoint=from_timepoint,
+                to_timepoint=to_timepoint
+            )
+            url = self._urls.entities(query)
+
+            xs = self._http.get(url=url, headers=self._ctx.headers())
+            return from_entity_summaries(xs)
         except HTTPError as e:
             if e.response.status_code == 404:
                 return []
@@ -81,12 +121,12 @@ class QuantumLeapClient:
                         headers=self._ctx.headers())
 
     def time_series(self, entity_id: str, attr_name: str,
-                    query: dict = None) -> dict:
+                    query: dict = {}) -> dict:
         url = self._urls.attribute(entity_id, attr_name, query)
         return self._http.get(url=url, headers=self._ctx.headers())
 
     def all_time_series(self, entity_type: str, attr_name: str,
-                        query: dict = None) -> dict:
+                        query: dict = {}) -> dict:
         url = self._urls.entity_type(entity_type, attr_name, query)
         return self._http.get(url=url, headers=self._ctx.headers())
 
@@ -134,14 +174,11 @@ class QuantumLeapClient:
         Returns:
             The query result packed in an `EntitySeries`.
         """
-        query = {}
-        if entries_from_latest:
-            query['lastN'] = str(entries_from_latest)
-        if from_timepoint:
-            query['fromDate'] = from_timepoint.isoformat()
-        if to_timepoint:
-            query['toDate'] = to_timepoint.isoformat()
-
+        query = self._to_query_dict(
+            entries_from_latest=entries_from_latest,
+            from_timepoint=from_timepoint, to_timepoint=to_timepoint
+        )
         url = self._urls.entity_series(entity_id, entity_type, query)
+
         raw_series = self._http.get(url=url, headers=self._ctx.headers())
         return EntitySeries.from_quantumleap_format(raw_series)
