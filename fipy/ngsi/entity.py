@@ -76,7 +76,7 @@ with entity series.
 
 from datetime import datetime
 from pydantic import BaseModel, create_model
-from typing import Any, List, Optional, Type
+from typing import Any, List, Optional, Type, TypeVar
 
 from fipy.dict import merge_dicts
 
@@ -126,6 +126,11 @@ class BaseEntity(BaseModel):
             return None
         return cls(**raw_entity)
 
+
+Entity = TypeVar('Entity', bound=BaseEntity)
+"""The generic type of NGSI entities. An NGSI entity type is a subclass
+of `BaseEntity`.
+"""
 
 class EntityUpdateNotification(BaseModel):
     data: List[dict]
