@@ -3,6 +3,7 @@ import time
 
 from fipy.ngsi.entity import BaseEntity
 from fipy.ngsi.orion import OrionClient
+from fipy.sim.generator import EntityFactory
 
 
 class DevicePoolSampler(ABC):
@@ -21,6 +22,9 @@ class DevicePoolSampler(ABC):
             orion: A client to connect to Orion.
         """
         self._device_n = pool_size
+        self._factory = EntityFactory.with_numeric_suffixes(
+            how_many=pool_size, generator=self.new_device_entity
+        )
         self._orion = orion
 
     @abstractmethod
@@ -34,9 +38,7 @@ class DevicePoolSampler(ABC):
 
     def make_device_entity(self, nid: int) -> BaseEntity:
         self._ensure_nid_bounds(nid)
-        entity = self.new_device_entity()
-        entity.set_id_with_type_prefix(f"{nid}")
-        return entity
+        return self._factory.new_entity(nid - 1)
 
     def entity_id(self, nid: int) -> str:
         return self.make_device_entity(nid).id
