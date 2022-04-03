@@ -9,6 +9,7 @@ from fipy.ngsi.headers import FiwareContext
 from fipy.ngsi.orion import OrionClient
 from fipy.ngsi.quantumleap import QuantumLeapClient
 from fipy.sim.sampler import DevicePoolSampler
+from fipy.sim.generator import float_attr_close_to, text_attr_from_one_of
 from fipy.wait import wait_for_orion, wait_for_quantumleap
 
 
@@ -118,11 +119,11 @@ class BotSampler(DevicePoolSampler):
         super().__init__(pool_size, orion if orion else orion_client())
 
     def new_device_entity(self) -> BotEntity:
-        seed = random.uniform(0, 1)
-        speed = FloatAttr.new(1.0335 + seed)
-        direction = TextAttr.new(random.choice(DIRECTIONS))
-
-        return BotEntity(id='', speed=speed, direction=direction)
+        return BotEntity(
+            id='',
+            speed=float_attr_close_to(1.0335),
+            direction=text_attr_from_one_of(DIRECTIONS)
+        )
 
 
 class DroneEntity(BaseEntity):
@@ -154,7 +155,4 @@ class RoomSampler(DevicePoolSampler):
         super().__init__(pool_size, orion if orion else orion_client())
 
     def new_device_entity(self) -> RoomEntity:
-        seed = random.uniform(0, 1)
-        temperature = FloatAttr.new(20.0335 * seed)
-
-        return RoomEntity(id='', temperature=temperature)
+        return RoomEntity(id='', temperature=float_attr_close_to(20.0335))
