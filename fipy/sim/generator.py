@@ -1,9 +1,8 @@
-from operator import ge
 import random
 from typing import Any, Callable, Generator, Generic, List
 from uuid import uuid4
 
-from fipy.ngsi.entity import Entity, FloatAttr, TextAttr
+from fipy.ngsi.entity import BoolAttr, Entity, FloatAttr, TextAttr
 
 
 def float_attr_close_to(base: float) -> FloatAttr:
@@ -32,6 +31,16 @@ def text_attr_from_one_of(choices: List[str]) -> TextAttr:
     """
     pick = random.choice(choices)
     return TextAttr.new(pick)
+
+
+def bool_attr() -> BoolAttr:
+    """Pick randomly between `True` and `False` to instantiate a `BoolAttr`.
+
+    Returns:
+        A `BoolAttr` instance with randomly picked truth value.
+    """
+    pick = random.choice([True, False])
+    return BoolAttr.new(pick)
 
 
 EntityGenerator = Callable[[], Entity]

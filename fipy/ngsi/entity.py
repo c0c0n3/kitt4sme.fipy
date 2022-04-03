@@ -106,6 +106,11 @@ class TextAttr(Attr):
     value: str
 
 
+class BoolAttr(Attr):
+    type = 'Boolean'
+    value: bool
+
+
 class BaseEntity(BaseModel):
     id: str
     type: str

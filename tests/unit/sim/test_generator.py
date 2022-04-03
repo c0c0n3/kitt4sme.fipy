@@ -17,6 +17,11 @@ def test_text_attr_from_one_of():
     assert got.value in choices
 
 
+def test_bool_attr():
+    got = {bool_attr().value for _ in range(100)}
+    assert len(got) == 2
+
+
 class Bot(BaseEntity):
     type = 'Bot'
     name: TextAttr = TextAttr.new('foobie')

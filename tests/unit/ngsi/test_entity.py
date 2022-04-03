@@ -1,5 +1,6 @@
 from fipy.ngsi.entity import *
 
+import pytest
 from tests.util.fiware import BotEntity
 
 
@@ -15,6 +16,14 @@ def test_text_attr_from_value():
 
     assert t.type == 'Text'
     assert t.value == 'howzit'
+
+
+@pytest.mark.parametrize('raw', [True, False])
+def test_bool_attr_from_value(raw):
+    t = BoolAttr.new(raw)
+
+    assert t.type == 'Boolean'
+    assert t.value == raw
 
 
 def test_ngsi_entity_from_json_ignore_unknown_attrs():
