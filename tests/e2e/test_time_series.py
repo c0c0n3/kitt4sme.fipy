@@ -1,3 +1,5 @@
+import pytest
+
 from fipy.ngsi.orion import OrionClient
 from fipy.ngsi.quantumleap import QuantumLeapClient
 from fipy.wait import wait_until
@@ -30,11 +32,14 @@ def has_time_series(quantumleap: QuantumLeapClient) -> bool:
 # latest update.
 
 
-def test_bot_series(orion: OrionClient, quantumleap: QuantumLeapClient):
+@pytest.fixture(scope='module')
+def upload_entities(orion: OrionClient, quantumleap: QuantumLeapClient):
     SubMan().create_subscriptions()
     upload_bot_entities(orion)
     wait_until(lambda: has_time_series(quantumleap))
 
+
+def test_bot_series(upload_entities, quantumleap: QuantumLeapClient):
     entity_series = quantumleap.entity_series(
         entity_id=bot_entity_id(1), entity_type=BOT_ENTITY_TYPE,
         entries_from_latest=SAMPLES_PER_BOT
@@ -43,3 +48,16 @@ def test_bot_series(orion: OrionClient, quantumleap: QuantumLeapClient):
 
     assert r[SPEED_ATTR_NAME]
     assert len(r[SPEED_ATTR_NAME]) > 0
+
+
+def test_bot_type_series(upload_entities, quantumleap: QuantumLeapClient):
+    entity_series_dict = quantumleap.entity_type_series(
+        entity_type=BOT_ENTITY_TYPE
+    )
+
+    assert len(entity_series_dict) == BOT_N
+    for k in entity_series_dict:
+        r = entity_series_dict[k].dict()
+
+        assert r[SPEED_ATTR_NAME]
+        assert len(r[SPEED_ATTR_NAME]) > 0

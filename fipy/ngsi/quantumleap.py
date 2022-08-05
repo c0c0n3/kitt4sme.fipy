@@ -4,7 +4,7 @@ Wrapper calls to QuantumLeap.
 
 from datetime import datetime
 from requests import HTTPError
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uri import URI
 
 from fipy.http.jclient import JsonClient
@@ -46,6 +46,13 @@ class QuantumLeapEndpoints:
         url = self._append(rel_path)
 
         query['type'] = entity_type
+        url.query = query
+
+        return str(url)
+
+    def entity_type_series(self, entity_type: str, query: dict = {}) -> str:
+        rel_path = f"v2/types/{entity_type}"
+        url = self._append(rel_path)
         url.query = query
 
         return str(url)
@@ -182,3 +189,49 @@ class QuantumLeapClient:
 
         raw_series = self._http.get(url=url, headers=self._ctx.headers())
         return EntitySeries.from_quantumleap_format(raw_series)
+
+    def entity_type_series(self, entity_type: str,
+                            entries_from_latest: Optional[int] = None,
+                            from_timepoint: Optional[datetime] = None,
+                            to_timepoint: Optional[datetime] = None) \
+                                -> Dict[str, EntitySeries]:
+        """Collect a sub-sequence of an entity type series into data-frame
+        like objects.
+
+        For each tracked entity, Quantum Leap keeps a time-indexed sequence
+        of changes to that entity. Each entity has a type and you can fetch
+        all the time-indexed sequences for a given entity type from Quantum
+        Leap with a
+        ```
+            GET /v2/types/{entity_type}
+        ```
+        which is what this method does. The returned content isn't data frame
+        friendly, so this method packs the returned data into a dictionary of
+        `EntitySeries` values keyed by entity ID.
+        You can use each `EntitySeries` directly use with e.g. Pandas as in
+        ```
+            rs = ql_client.entity_type_series('Bot')
+            r = rs['Bot:1']  # assuming there's an entity w/ ID of 'Bot:1'
+            time_indexed_df = pd.DataFrame(r.dict()).set_index('index')
+        ```
+
+        Args:
+            entity_type: The type of the entity to retrieve.
+            entries_from_latest: Optional number of series entries to retrieve
+                starting from the latest entry in the series. Defaults to None.
+            from_timepoint: Optional datetime to retrieve all entries from the
+                given timepoint. Defaults to None.
+            to_timepoint: Optional datetime to retrieve all entries up to the
+                given timepoint. Defaults to None.
+
+        Returns:
+            The query result packed in a dictionary of `EntitySeries` values.
+        """
+        query = self._to_query_dict(
+            entries_from_latest=entries_from_latest,
+            from_timepoint=from_timepoint, to_timepoint=to_timepoint
+        )
+        url = self._urls.entity_type_series(entity_type, query)
+
+        raw_series = self._http.get(url=url, headers=self._ctx.headers())
+        return EntitySeries.from_quantumleap_type_format(raw_series)
