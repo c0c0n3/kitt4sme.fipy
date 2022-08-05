@@ -30,6 +30,42 @@ def mk_entity_query_result(extra_attrs=[]):
     }
 
 
+def mk_entity_type_query_result():
+    return {
+        "entityType": "Bot",
+        "entities": [
+            {
+                "entityId": "urn:ngsi-ld:Bot:2",
+                "index": raw_tix,
+                "attributes": [
+                    {
+                        "attrName": "direction",
+                        "values": directions
+                    },
+                    {
+                        "attrName": "speed",
+                        "values": speeds
+                    }
+                ]
+            },
+            {
+                "entityId": "urn:ngsi-ld:Bot:3",
+                "index": raw_tix,
+                "attributes": [
+                    {
+                        "attrName": "direction",
+                        "values": directions
+                    },
+                    {
+                        "attrName": "speed",
+                        "values": [s + 1 for s in speeds]
+                    }
+                ]
+            },
+        ]
+    }
+
+
 def test_dynamic_model_fields():
     r = EntitySeries.from_quantumleap_format(mk_entity_query_result())
 
@@ -102,3 +138,19 @@ def test_convert_custom_entity_series_to_pandas():
 
     e_attrs_column_values = time_indexed_df['e_attr'].to_list()
     assert e_attrs_column_values == [1, 2, 3]
+
+
+def test_from_entity_type_query():
+    entity_type_query_result = mk_entity_type_query_result()
+    rs = EntitySeries.from_quantumleap_type_format(entity_type_query_result)
+    assert len(rs) == 2
+
+    bot2_series = rs['urn:ngsi-ld:Bot:2']
+    assert bot2_series.index == tix
+    assert bot2_series.direction == directions
+    assert bot2_series.speed == speeds
+
+    bot3_series = rs['urn:ngsi-ld:Bot:3']
+    assert bot3_series.index == tix
+    assert bot3_series.direction == directions
+    assert bot3_series.speed == [s + 1 for s in speeds]

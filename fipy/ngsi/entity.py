@@ -76,7 +76,7 @@ with entity series.
 
 from datetime import datetime
 from pydantic import BaseModel, create_model
-from typing import Any, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from fipy.dict import merge_dicts
 
@@ -209,8 +209,12 @@ class EntitySeries(BaseModel):
 
         Args:
             entity_query_result: a dictionary representing the JSON object
-                returned by a call to the `v2/entities/{entity ID}` Quantum
+                returned by a call to the `/v2/entities/{entity ID}` Quantum
                 Leap endpoint.
+
+        Returns:
+            An `EntitySeries` holding the same data as the input result set,
+            but in a data frame friendly shape.
         """
         def to_kv(attr_payload: dict) -> dict:
             key = attr_payload.get('attrName', '')
@@ -236,3 +240,61 @@ class EntitySeries(BaseModel):
 # access one of the attributes in the returned model instance, e.g. x.attr1,
 # you'll get the corresponding value array returned by the Quantum Leap query.
 # This is okay since the returned object is supposed to be immutable.
+
+    @classmethod
+    def from_quantumleap_type_format(cls, entity_type_query_result: dict) \
+            -> Dict[str, 'EntitySeries']:
+        """Convert a set of entity series returned by a Quantum Leap query
+        to a dictionary of `EntitySeries`.
+
+        The returned dictionary will have an `EntitySeries` value for each
+        entity series in the query result. Each `EntitySeries` value will
+        be keyed by the entity ID of the entity series it represents.
+
+        Notice each `EntitySeries` will have a field called `index` containing
+        the time index array returned by Quantum Leap. Also, it will have a
+        field for each returned attribute array and the field name will be
+        the same as the attribute name.
+
+        Basically this method is just a convenience transformation which
+        leverages the `from_quantumleap_format` method as the pseudo-code
+        below hints
+        ```
+        {                              {
+          "entityType": "T",    ----\    "e1_id": from_quantumleap_format(e1),
+          "entities": [e1, e2,  ----/    "e2_id": from_quantumleap_format(e2),
+                        ...]                   ...
+        }                              }
+        ```
+
+        Args:
+            entity_type_query_result: a dictionary representing the JSON
+                object returned by a call to the `v2/types/{entity type}`
+                Quantum Leap endpoint.
+
+        Returns:
+            An dictionary of `EntitySeries` values keyed by their respective
+            entity ID.
+        """
+        etype = entity_type_query_result.get('entityType', '')
+        entities = entity_type_query_result.get('entities', [])
+
+        series_dict = {}
+        for e in entities:
+            ec = dict(e)  # (*) see NOTE below
+            ec['entityType'] = etype
+
+            id = ec.get('entityId', '')
+            series = cls.from_quantumleap_format(ec)
+
+            series_dict[id] = series
+
+        return series_dict
+
+# NOTE. Immutability. That's a good thing which is why we don't change
+# the entity_type_query_result input dict. But from_quantumleap_format
+# expects a dict w/ an entityType in it, so we make a shallow copy of
+# each entity dict in entity_type_query_result to add the entity type.
+# The shallow copy will work b/c we only change a top-level key so the
+# change won't be reflected in the original dict. This saves us from a
+# deep copy which would be way more expensive.
