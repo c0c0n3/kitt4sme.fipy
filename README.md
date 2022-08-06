@@ -1,5 +1,6 @@
-# kitt4sme.fipy
-Python utils for a little sweeter FIWARE experience.
+KITT4SME FiPy
+-------------
+> Python utils for a little sweeter FIWARE experience.
 
 
 ### Importing in your project
