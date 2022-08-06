@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional, Tuple
 
-__version__ = '0.5.0'
+__version__ = '0.6.1'
 
 
 def pyproject_file() -> Path:
