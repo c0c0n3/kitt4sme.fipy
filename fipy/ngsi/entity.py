@@ -111,6 +111,16 @@ class BoolAttr(Attr):
     value: bool
 
 
+class ArrayAttr(Attr):
+    type = 'Array'
+    value: List
+
+
+class StructuredValueAttr(Attr):
+    type = 'StructuredValue'
+    value: Dict
+
+
 class BaseEntity(BaseModel):
     id: str
     type: str

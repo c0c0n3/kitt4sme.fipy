@@ -18,6 +18,20 @@ def test_text_attr_from_value():
     assert t.value == 'howzit'
 
 
+def test_array_attr_from_value():
+    t = ArrayAttr.new([1, 2])
+
+    assert t.type == 'Array'
+    assert t.value == [1, 2]
+
+
+def test_struct_attr_from_value():
+    t = StructuredValueAttr.new({'x': 1})
+
+    assert t.type == 'StructuredValue'
+    assert t.value == {'x': 1}
+
+
 @pytest.mark.parametrize('raw', [True, False])
 def test_bool_attr_from_value(raw):
     t = BoolAttr.new(raw)
