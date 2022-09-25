@@ -1,6 +1,7 @@
 import json
-
 from fipy.ngsi.entity import *
+
+from tests.util.fiware import BotEntity
 
 
 json_with_all_types = """
@@ -65,3 +66,41 @@ def test_json_to_struct_attr():
     assert attr is not None
     assert type(attr) == type(StructuredValueAttr.new({}))
     assert attr.value == {"h": 3}
+
+
+def test_entity_from_kv_repr():
+    json_rep = """
+        {
+            "id": "urn:ngsi-ld:Bot:1",
+            "type": "Bot",
+            "speed": 1.2
+        }
+    """
+    kv_entity = json.loads(json_rep)
+    entity = BotEntity.from_raw_kv(kv_entity)
+
+    assert entity is not None
+    assert type(entity) == BotEntity
+    assert entity.id == kv_entity['id']
+    assert entity.type == kv_entity['type']
+    assert entity.speed.value == 1.2
+    assert entity.speed.type == 'Number'
+
+
+def test_dyn_entity_from_kv_repr():
+    json_rep = """
+        {
+            "id": "urn:ngsi-ld:Drone:1",
+            "type": "Drone",
+            "position": "41.40338, 2.17403"
+        }
+    """
+    kv_entity = json.loads(json_rep)
+    entity = from_raw_kv_to_dyn_entity(kv_entity)
+
+    assert entity is not None
+    assert issubclass(type(entity), BaseEntity)
+    assert entity.id == kv_entity['id']
+    assert entity.type == kv_entity['type']
+    assert entity.position.value == '41.40338, 2.17403'
+    assert entity.position.type == 'Text'

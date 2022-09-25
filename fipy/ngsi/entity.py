@@ -48,6 +48,27 @@ BaseEntity(id='1', type='foo')
 >>> print(bot2)
 id='urn:ngsi-ld:Bot:2' type='Bot' speed=FloatAttr(type='Number', value=12.3)
 
+>>> raw_kv_bot_data = {
+...     "id": ld_urn("Bot:3"), "type": "Bot", "speed": 12.3,
+...     "other": "not in class def, ignore"
+... }
+>>> bot3 = BotEntity.from_raw_kv(raw_kv_bot_data)
+>>> print(bot3)
+id='urn:ngsi-ld:Bot:3' type='Bot' speed=FloatAttr(type='Number', value=12.3)
+
+>>> raw_kv_drone_data = {
+...     "id": ld_urn("Drone:4"), "type": "Drone",
+...     "position": "41.40338, 2.17403"
+... }
+>>> drone4 = from_raw_kv_to_dyn_entity(raw_kv_drone_data)
+>>> print(drone4)
+id='urn:ngsi-ld:Drone:4' type='Drone' \
+    position=TextAttr(type='Text', value='41.40338, 2.17403')
+>>> type(drone4)  # Pydantic model dynamically created for us under the bonnet
+<class 'pydantic.main.Drone'>
+>>> issubclass(type(drone4), BaseEntity)
+True
+
 
 7. Serialise entity with attribute data to NGSI JSON.
 
@@ -76,9 +97,15 @@ with entity series.
 
 from datetime import datetime
 from pydantic import BaseModel, create_model
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 from fipy.dict import merge_dicts
+
+
+NGSI_ID_FIELD = 'id'
+"""The name of the NGSI ID field."""
+NGSI_TYPE_FIELD = 'type'
+"""The name of the NGSI type field."""
 
 
 def ld_urn(unique_suffix: str) -> str:
@@ -160,6 +187,73 @@ def json_val_to_attr(jval: Any) -> Optional[Attr]:
         return None
 
 
+JsonLike = Union[None, int, float, bool, str, list, dict]
+"""The type of an NGSI entity attribute value in a JSON document.
+"""
+
+KVEntity = Dict[str, JsonLike]
+"""A key-value pair representation of an NGSI entity.
+
+A key-value pair representation is a dictionary containing:
+  - 'id' key with a string value---the NGSI entity's ID.
+  - 'type' key with a string value---the NGSI entity's type.
+  - any number of additional key-value pairs where each value has one
+    of the following types: `int`, `float`, `bool`, `str`, `list`, or
+    `dict`.
+
+Example.
+>>> bot_entity = {'id': 'urn:ngsi-ld:Bot:2', 'type': 'Bot', 'speed': 12.3}
+"""
+
+EntityDict = Dict
+"""A dictionary representation of an NGSI entity.
+
+An entity dictionary is a dictionary containing:
+  - 'id' key with a string value---the NGSI entity's ID.
+  - 'type' key with a string value---the NGSI entity's type.
+  - any number of additional key-value pairs each representing an NGSI
+    attribute. That is each value `v` is a dict holding a 'value' and,
+    optionally, a 'type' key. `v['type']` is a string denoting the NGSI
+    attribute's type where `v['value']` is its actual value payload which
+    can have any type.
+
+Example.
+>>> bot_entity = {
+        'id': 'urn:ngsi-ld:Bot:2', 'type': 'Bot', \
+        'speed': {'value': 12.3} \
+    }
+"""
+
+
+def entity_kv_to_entity_dict(repr: KVEntity) -> EntityDict:
+    """Convert a key-value pair representation of an NGSI entity to an
+    entity dictionary.
+
+    This function takes a key-value pair representation (ignoring extra
+    key-value pairs not in the above format) and converts it into an entity
+    dictionary.
+
+    Args:
+        repr: key-value pair representation of the NGSI entity.
+
+    Returns:
+        The corresponding entity dictionary representation. Notice any
+        input key-value pair `(k, v)` where `v` is `None` or is not
+        `JsonLike` gets ignored. This means the returned dict won't
+        have a key `k` in it.
+    """
+    fields = {
+        NGSI_ID_FIELD: repr.get(NGSI_ID_FIELD, ''),
+        NGSI_TYPE_FIELD: repr.get(NGSI_TYPE_FIELD, '')
+    }
+    for (k, v) in repr.items():
+        if k != NGSI_ID_FIELD and k != NGSI_TYPE_FIELD:
+            f = json_val_to_attr(v)
+            if f is not None:
+                fields[k] = json_val_to_attr(v)
+    return fields
+
+
 class BaseEntity(BaseModel):
     id: str
     type: str
@@ -173,18 +267,100 @@ class BaseEntity(BaseModel):
         return self.json(exclude_none=True)
 
     @classmethod
-    def from_raw(cls, raw_entity: dict) -> Optional['BaseEntity']:
+    def _has_same_ngsi_type(cls, raw_entity: dict) -> bool:
         own_type = cls(id='').type
-        etype = raw_entity.get('type', '')
-        if own_type != etype:
+        etype = raw_entity.get(NGSI_TYPE_FIELD, '')
+
+        return (own_type == etype)
+
+    @classmethod
+    def from_raw(cls, raw_entity: EntityDict) -> Optional['BaseEntity']:
+        """Instantiate a `BaseEntity` subclass from its entity dictionary
+        representation.
+
+        Args:
+            raw_entity: a dictionary containing an NGSI ID and type field
+                plus any number of attribute fields. ID and type have a
+                string value whereas an attribute field value is a dict
+                containing a 'value' key to look up the attribute's value
+                and optionally a 'type' key to look up the attribute's type.
+
+        Returns:
+            `None` if the `raw_entity['type']` is not the same as that of
+            the `BaseEntity` subclass you called this method from. Otherwise
+            an instance of the subclass at hand populated with the ID and
+            attributes found in the input dict. Notice we only extract attr
+            values for those attributes you declared in the subclass and we
+            ignore everything else contained in `raw_entity`.
+        """
+        if cls._has_same_ngsi_type(raw_entity):
+            return cls(**raw_entity)
+        return None
+
+    @classmethod
+    def from_raw_kv(cls, raw_entity: KVEntity) -> Optional['BaseEntity']:
+        """Instantiate a `BaseEntity` subclass from its entity key-value
+        pair representation.
+
+        Args:
+            raw_entity: a dictionary containing an NGSI ID and type field
+                plus any number of value fields. ID and type have a string
+                value whereas a value field has a value of type: `int`,
+                `float`, `bool`, `str`, `list`, or `dict`.
+
+        Returns:
+           `None` if the `raw_entity['type']` is not the same as that of
+            the `BaseEntity` subclass you called this method from. Otherwise
+            an instance of the subclass at hand populated with the ID and
+            attributes found in the input dict. Notice we only extract field
+            values for those attributes you declared in the subclass and we
+            ignore everything else contained in `raw_entity`.
+        """
+        if not cls._has_same_ngsi_type(raw_entity):
             return None
-        return cls(**raw_entity)
+
+        fields = entity_kv_to_entity_dict(raw_entity)
+        return cls(**fields)
 
 
 Entity = TypeVar('Entity', bound=BaseEntity)
 """The generic type of NGSI entities. An NGSI entity type is a subclass
 of `BaseEntity`.
 """
+
+
+def from_raw_kv_to_dyn_entity(raw_entity: KVEntity) -> Entity:
+    """Create a `BaseEntity` subclass on the fly to hold the data extracted
+    from the given key-value pair NGSI entity representation.
+
+    Args:
+        raw_entity: a dictionary containing an NGSI ID and type field plus
+            any number of value fields. ID and type have a string value
+            whereas a value field has a value of type: `int`, `float`, `bool`,
+            `str`, `list`, or `dict`.
+
+    Returns:
+        An instance of a new subclass of `BaseEntity` named after the NGSI
+        type in the input `raw_entity`. This instance `r` will have `id` and
+        `type` fields populated from `raw_entity`. Likewise, there will be
+        an `Attr` field in correspondence of every other key-value pair
+        `(k, v)` in `raw_entity`. The field name will be `k` and
+        `r.k.value == v`.
+    """
+    fields = entity_kv_to_entity_dict(raw_entity)
+    model_name = fields[NGSI_TYPE_FIELD]
+    dynamic_model = create_model(model_name, __base__=BaseEntity, **fields)
+    return dynamic_model()  # (*) see NOTE below
+
+# NOTE. Pydantic model.
+# We create a dynamic Pydantic model to extend BaseEntity since we don't
+# have a specific BaseEntity subclass to instantiate. So when creating the
+# model we pass in the attribute names as field names. But we also stick in
+# their values so Pydantic will use them as default values. As a result of
+# that, if you access any of the attributes in the returned model instance,
+# e.g. x.attr1, you'll get the corresponding value from the original raw
+# entity dict.
+
 
 class EntityUpdateNotification(BaseModel):
     data: List[dict]
