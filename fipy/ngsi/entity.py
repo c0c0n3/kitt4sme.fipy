@@ -121,6 +121,45 @@ class StructuredValueAttr(Attr):
     value: Dict
 
 
+def json_val_to_attr(jval: Any) -> Optional[Attr]:
+    """Convert a JSON value to an NGSI attribute.
+
+    Conversion is pretty basic:
+      - `int` or `float` ==> `FloatAttr`
+      - `bool` ==> `FloatAttr`
+      - `str` ==> `TextAttr`
+      - `list` ==> `ArrayAttr`
+      - `dict` ==> `StructuredValueAttr`
+      - anything else ==> `None`
+
+    Notice JSON only has float but the Python parser converts numbers without
+    a fractional part to `int` which is why we map `int` to `FloatAttr`. Also
+    JSON null, which the parser converts to `None`, can't be mapped to any
+    attribute because there's no deterministic way to chose a corresponding
+    NGSI type for it.
+
+    Args:
+        jval: a JSON value parsed by the `json` package.
+
+    Returns:
+        The corresponding NGSI attribute or `None` if the value was a JSON
+        null or you pass in a value whose type is not in the above conversion
+        map.
+    """
+    ctor_map = {
+        int: FloatAttr.new,
+        float: FloatAttr.new,
+        bool: BoolAttr.new,
+        str: TextAttr.new,
+        list: ArrayAttr.new,
+        dict: StructuredValueAttr.new
+    }
+    try:
+        return ctor_map[type(jval)](jval)
+    except KeyError:
+        return None
+
+
 class BaseEntity(BaseModel):
     id: str
     type: str
