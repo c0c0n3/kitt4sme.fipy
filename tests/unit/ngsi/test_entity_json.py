@@ -104,3 +104,19 @@ def test_dyn_entity_from_kv_repr():
     assert entity.type == kv_entity['type']
     assert entity.position.value == '41.40338, 2.17403'
     assert entity.position.type == 'Text'
+
+def test_to_ngsi_json():
+    json_rep = """
+        {
+            "id": "urn:ngsi-ld:Drone:2",
+            "type": "Drone",
+            "position": "41.40338, 2.17403",
+            "speed": 12.3
+        }
+    """
+    ngsi_rep = to_ngsi_json(json_rep)
+
+    assert ngsi_rep == \
+        '{"id": "urn:ngsi-ld:Drone:2", "type": "Drone",' +\
+        ' "position": {"type": "Text", "value": "41.40338, 2.17403"},' +\
+        ' "speed": {"type": "Number", "value": 12.3}}'

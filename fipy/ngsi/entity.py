@@ -96,6 +96,7 @@ with entity series.
 """
 
 from datetime import datetime
+import json
 from pydantic import BaseModel, create_model
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
@@ -153,7 +154,7 @@ def json_val_to_attr(jval: Any) -> Optional[Attr]:
 
     Conversion is pretty basic:
       - `int` or `float` ==> `FloatAttr`
-      - `bool` ==> `FloatAttr`
+      - `bool` ==> `BoolAttr`
       - `str` ==> `TextAttr`
       - `list` ==> `ArrayAttr`
       - `dict` ==> `StructuredValueAttr`
@@ -162,7 +163,7 @@ def json_val_to_attr(jval: Any) -> Optional[Attr]:
     Notice JSON only has float but the Python parser converts numbers without
     a fractional part to `int` which is why we map `int` to `FloatAttr`. Also
     JSON null, which the parser converts to `None`, can't be mapped to any
-    attribute because there's no deterministic way to chose a corresponding
+    attribute because there's no deterministic way to choose a corresponding
     NGSI type for it.
 
     Args:
@@ -360,6 +361,24 @@ def from_raw_kv_to_dyn_entity(raw_entity: KVEntity) -> Entity:
 # that, if you access any of the attributes in the returned model instance,
 # e.g. x.attr1, you'll get the corresponding value from the original raw
 # entity dict.
+
+def to_ngsi_json(raw_entity_doc: str) -> str:
+    """Convert the input JSON document to NGSI-v2 JSON.
+
+    Notice this is just a convenience function to parse the JSON, call
+    `from_raw_kv_to_dyn_entity` on the parsed value and the convert the
+    generated NGSI entity to JSON.
+
+    Args:
+        raw_entity_doc: a JSON document containing an object which should
+            be key-value pair representation of an NGSI entity.
+
+    Returns:
+        NGSI-v2 JSON encoding the data in the input document.
+    """
+    raw_entity = json.loads(raw_entity_doc)
+    entity = from_raw_kv_to_dyn_entity(raw_entity)
+    return entity.to_json()
 
 
 class EntityUpdateNotification(BaseModel):
