@@ -18,7 +18,7 @@ services:
       - mongodb
 
   timescale:
-    image: timescale/timescaledb-postgis:1.7.5-pg12
+    image: timescale/timescaledb-postgis:2.3.0-pg13
     ports:
       - "5432:5432"
     networks:
@@ -27,7 +27,7 @@ services:
       - POSTGRES_PASSWORD=*
 
   quantumleap-db-setup:
-    image: orchestracities/quantumleap-pg-init
+    image: orchestracities/quantumleap-pg-init:0.8.3
     depends_on:
       - timescale
     networks:
@@ -39,7 +39,7 @@ services:
       - PG_PASS=*
 
   quantumleap:
-    image: orchestracities/quantumleap
+    image: orchestracities/quantumleap:0.8.3
     depends_on:
       - timescale
     networks:
