@@ -2,11 +2,11 @@
 Wrapper calls to Orion Context Broker.
 """
 
-from typing import List, Type
+from typing import List
 from uri import URI
 
 from fipy.http.jclient import JsonClient
-from fipy.ngsi.entity import BaseEntity, EntitiesUpsert
+from fipy.ngsi.entity import BaseEntity, Entity, EntitiesUpsert
 from fipy.ngsi.headers import FiwareContext
 
 
@@ -59,11 +59,10 @@ class OrionClient:
                   for entity_dict in entity_arr]
         return models
 
-    def list_entities_of_type(self, like: Type[BaseEntity]) \
-            -> List[BaseEntity]:
+    def list_entities_of_type(self, like: Entity) -> List[Entity]:
         url = self._urls.entities({'type': like.type})
         entity_arr = self._http.get(url=url, headers=self._ctx.headers())
-        models = [like.parse_obj(entity_dict) for entity_dict in entity_arr]
+        models = [like.from_raw(entity_dict) for entity_dict in entity_arr]
         return models
 
     def subscribe(self, sub: dict):
