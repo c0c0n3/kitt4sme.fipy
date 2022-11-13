@@ -25,6 +25,12 @@ def has_bot_entities(orion: OrionClient) -> bool:
     return len(es) > 0
 
 
+def assert_bot_entity(want: BotEntity, got: BotEntity):
+    assert want.id == got.id
+    assert abs(want.speed.value - got.speed.value) < 0.01
+    assert want.direction.value == want.direction.value
+
+
 def test_bots(orion: OrionClient):
     sorted_bots = upload_bot_entities(orion)
 
@@ -34,4 +40,9 @@ def test_bots(orion: OrionClient):
 
     assert len(sorted_bots) == len(sorted_orion_bots)
     for i in range(len(sorted_bots)):
-        assert sorted_bots[i].id == sorted_orion_bots[i].id
+        assert_bot_entity(want=sorted_bots[i], got=sorted_orion_bots[i])
+        orion_bot = orion.fetch_entity(sorted_bots[i])
+        assert_bot_entity(want=sorted_bots[i], got=orion_bot)
+
+    summaries = orion.list_entities()
+    assert len(summaries) == 2
