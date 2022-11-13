@@ -39,3 +39,6 @@ def test_bots(orion: OrionClient):
         assert want.id == got.id
         assert abs(want.speed.value - got.speed.value) < 0.01
         assert want.direction.value == want.direction.value
+
+    summaries = orion.list_entities()
+    assert len(summaries) == 2

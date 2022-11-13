@@ -53,11 +53,13 @@ class OrionClient:
                         headers=self._ctx.headers())
 
     def list_entities(self) -> List[BaseEntity]:
-        url = self._urls.entities()
+        url = self._urls.entities({'attrs': 'id'})  # (*)
         entity_arr = self._http.get(url=url, headers=self._ctx.headers())
         models = [BaseEntity.parse_obj(entity_dict)
                   for entity_dict in entity_arr]
         return models
+    # NOTE. Include only `id` and `type` fields of each entity.
+    # See: https://github.com/c0c0n3/kitt4sme.fipy/issues/12
 
     def list_entities_of_type(self, like: Entity) -> List[Entity]:
         url = self._urls.entities({'type': like.type})
