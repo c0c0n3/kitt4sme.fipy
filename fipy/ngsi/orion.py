@@ -2,7 +2,7 @@
 Wrapper calls to Orion Context Broker.
 """
 
-from typing import List
+from typing import List, Optional
 from uri import URI
 
 from fipy.http.jclient import JsonClient
@@ -66,6 +66,13 @@ class OrionClient:
         entity_arr = self._http.get(url=url, headers=self._ctx.headers())
         models = [like.from_raw(entity_dict) for entity_dict in entity_arr]
         return models
+
+    def fetch_entity(self, like: Entity) -> Optional[Entity]:
+        query = {'id': like.id, 'type': like.type}
+        url = self._urls.entities(query)
+        entity_arr = self._http.get(url=url, headers=self._ctx.headers())
+        models = [like.from_raw(entity_dict) for entity_dict in entity_arr]
+        return models[0] if len(models) > 0 else None
 
     def subscribe(self, sub: dict):
         url = self._urls.subscriptions()
