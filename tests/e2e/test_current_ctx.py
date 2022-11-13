@@ -34,4 +34,8 @@ def test_bots(orion: OrionClient):
 
     assert len(sorted_bots) == len(sorted_orion_bots)
     for i in range(len(sorted_bots)):
-        assert sorted_bots[i].id == sorted_orion_bots[i].id
+        want = sorted_bots[i]
+        got = sorted_orion_bots[i]
+        assert want.id == got.id
+        assert abs(want.speed.value - got.speed.value) < 0.01
+        assert want.direction.value == want.direction.value
