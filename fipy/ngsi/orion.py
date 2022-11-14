@@ -74,8 +74,13 @@ class OrionClient:
         self._http.post(url=url, json_payload=payload.dict(),
                         headers=self._ctx.headers())
 
-    def list_entities(self) -> List[BaseEntity]:
+    def list_entities(self, type: Optional[str] = None) -> List[BaseEntity]:
         """Fetch an entity summary of each entity in the context.
+
+        Args:
+            type: optional param for the type of entities to fetch. If
+                given, only fetch summaries of entities having that type.
+                Otherwise fetch summaries of all entities in the context.
 
         Returns:
             A list of `BaseEntity`, one for each entity found in the
@@ -83,7 +88,10 @@ class OrionClient:
             entities, they only have the `id` and `type` fields and
             no attributes.
         """
-        url = self._urls.entities({'attrs': 'id'})  # (*)
+        query = {'attrs': 'id'}  # (*)
+        if type:
+            query['type'] = type
+        url = self._urls.entities(query)
         entity_arr = self._http.get(url=url, headers=self._ctx.headers())
         models = [BaseEntity.parse_obj(entity_dict)
                   for entity_dict in entity_arr]
@@ -107,6 +115,18 @@ class OrionClient:
         entity_arr = self._http.get(url=url, headers=self._ctx.headers())
         models = [like.from_raw(entity_dict) for entity_dict in entity_arr]
         return models
+
+    def list_entity_ids(self, type: str) -> List[str]:
+        """List the IDs of all entities of the given type.
+
+        Args:
+            type: the entity type.
+
+        Returns:
+            A list of entity IDs.
+        """
+        summaries = self.list_entities(type)
+        return [e.id for e in summaries]
 
     def fetch_entity(self, like: Entity) -> Optional[Entity]:
         """Fetch the entity of the given type and ID.
