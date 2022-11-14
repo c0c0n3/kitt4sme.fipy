@@ -1,7 +1,21 @@
 from typing import List
+from fipy.ngsi.entity import FloatAttr
 from fipy.ngsi.orion import OrionClient
 from fipy.wait import wait_until
-from tests.util.fiware import BotEntity, BotSampler
+from tests.util.fiware import BotEntity, BotSampler, DroneEntity, \
+    RoomEntity, RoomSampler
+
+
+def upload_room_entities(orion: OrionClient) -> List[RoomEntity]:
+    sampler = RoomSampler(pool_size=2, orion=orion)
+    room1 = sampler.send_device_readings(1)
+    room2 = sampler.send_device_readings(2)
+
+    return [room1, room2]
+
+
+def room_type() -> str:
+    return RoomEntity(id='', temperature=FloatAttr.new(0)).type
 
 
 def upload_bot_entities(orion: OrionClient) -> List[BotEntity]:
@@ -46,3 +60,26 @@ def test_bots(orion: OrionClient):
 
     summaries = orion.list_entities()
     assert len(summaries) == 2
+
+
+def test_no_entities(orion: OrionClient):
+    like = DroneEntity(id='1', height=FloatAttr.new(0))
+
+    got = orion.list_entities(type=like.type)
+    assert len(got) == 0
+
+    got = orion.list_entities_of_type(like)
+    assert len(got) == 0
+
+    got = orion.fetch_entity(like)
+    assert got is None
+
+
+def test_rooms(orion: OrionClient):
+    rooms = upload_room_entities(orion)
+    want_ids = {r.id for r in rooms}
+
+    orion_ids = orion.list_entity_ids(type=room_type())
+    got_ids = {*orion_ids}
+
+    assert want_ids == got_ids
