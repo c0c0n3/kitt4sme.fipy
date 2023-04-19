@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fipy"
-version = "0.10.0"
+version = "0.11.0"
 description = "Python utils for a little sweeter FIWARE experience."
 authors = ["c0c0n3"]
 
